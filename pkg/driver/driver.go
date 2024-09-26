@@ -124,6 +124,51 @@ func (d *Driver) NodePublishVolume(_ context.Context, req *csi.NodePublishVolume
     return &csi.NodePublishVolumeResponse{}, nil
 }
 
+func (d *Driver) NodeUnpublishVolume(_ context.Context, req *csi.NodeUnpublishVolumeRequest) (_ *csi.NodeUnpublishVolumeResponse, err error) {
+	log := d.log.WithValues(
+		"volumeID", req.VolumeId,
+		"targetPath", req.TargetPath,
+	)
+
+	defer func() {
+		if err != nil {
+			log.Error(err, "Failed to unpublish volume")
+		}
+	}()
+
+	// Validate request
+	switch {
+	case req.VolumeId == "":
+		return nil, status.Error(codes.InvalidArgument, "request missing required volume id")
+	case req.TargetPath == "":
+		return nil, status.Error(codes.InvalidArgument, "request missing required target path")
+	}
+
+    if err := unix.Unmount(req.TargetPath, 0); err != nil {
+        return nil, status.Errorf(codes.Internal, "unable to unmount %q: %v", req.TargetPath, err)
+    }
+
+	// Check and remove the mount path if present, report an error otherwise
+	if err := os.Remove(req.TargetPath); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return nil, status.Errorf(codes.Internal, "unable to remove target path %q: %v", req.TargetPath, err)
+	}
+
+	log.Info("Volume unpublished")
+
+	return &csi.NodeUnpublishVolumeResponse{}, nil
+}
+
+func (d *Driver) NodeGetCapabilities(context.Context, *csi.NodeGetCapabilitiesRequest) (*csi.NodeGetCapabilitiesResponse, error) {
+	return &csi.NodeGetCapabilitiesResponse{}, nil
+}
+
+func (d *Driver) NodeGetInfo(context.Context, *csi.NodeGetInfoRequest) (*csi.NodeGetInfoResponse, error) {
+	return &csi.NodeGetInfoResponse{
+		NodeId:            d.nodeID,
+		MaxVolumesPerNode: 0,
+	}, nil
+}
+
 func isVolumeCapabilityPlainMount(volumeCapability *csi.VolumeCapability) bool {
 	mount := volumeCapability.GetMount()
 	switch {
