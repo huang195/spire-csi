@@ -8,4 +8,4 @@ FROM alpine:latest
 COPY --from=builder /build/spiffe-csi-driver /bin/spiffe-csi-driver
 COPY --from=ghcr.io/spiffe/spire-agent:1.5.1 /opt/spire/bin/spire-agent /bin/spire-agent
 
-CMD ["/bin/spiffe-csi-driver"]
+ENTRYPOINT ["/bin/spiffe-csi-driver"]

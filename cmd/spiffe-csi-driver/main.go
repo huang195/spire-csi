@@ -17,7 +17,7 @@ import (
 var (
     nodeIDFlag               = flag.String("node-id", "", "Kubernetes Node ID. If unset, the node ID is obtained from the environment (i.e., -node-id-env)")
     nodeIDEnvFlag            = flag.String("node-id-env", "MY_NODE_NAME", "Envvar from which to obtain the node ID. Overridden by -node-id.")
-    csiSocketPathFlag        = flag.String("csi-socket-path", "/spiffe-csi/csi-identity.sock", "Path to the CSI socket")
+    csiSocketPathFlag        = flag.String("csi-socket-path", "/csi-identity/csi.sock", "Path to the CSI socket")
     pluginNameFlag           = flag.String("plugin-name", "csi-identity.spiffe.io", "Plugin name to register")
     workloadAPISocketDirFlag = flag.String("workload-api-socket-dir", "", "Path to the Workload API socket directory")
 )

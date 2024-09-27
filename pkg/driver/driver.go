@@ -42,6 +42,7 @@ func New(config Config) (*Driver, error) {
 	}
 	return &Driver{
 		log:                  config.Log,
+        nodeID:               config.NodeID,
 		pluginName:           config.PluginName,
 		workloadAPISocketDir: config.WorkloadAPISocketDir,
 	}, nil
@@ -118,6 +119,12 @@ func (d *Driver) NodePublishVolume(_ context.Context, req *csi.NodePublishVolume
     if err := unix.Mount("tmpfs", req.TargetPath, "tmpfs", 0, ""); err != nil {
 		return nil, status.Errorf(codes.Internal, "unable to mount %q: %v", req.TargetPath, err)
 	}
+
+    file, err := os.OpenFile(req.TargetPath+"/hello.txt", os.O_CREATE|os.O_WRONLY, 0644)
+    if err != nil {
+		return nil, status.Errorf(codes.Internal, "unable to create a file %q: %v", req.TargetPath+"/hello.txt", err)
+    }
+    defer file.Close()
 
     log.Info("Volume published")
 
