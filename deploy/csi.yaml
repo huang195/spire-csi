@@ -32,6 +32,7 @@ spec:
       labels:
         app: csi-identity-driver
     spec:
+      hostPID: true
       serviceAccountName: csi-identity-driver
       containers:
       - name: csi-identity-driver
