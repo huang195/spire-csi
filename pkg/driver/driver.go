@@ -14,7 +14,7 @@ import (
 	"google.golang.org/grpc/status"
     "golang.org/x/sys/unix"
 
-    "github.com/huang195/spire-csi/pkg/proc"
+    "github.com/huang195/spire-csi/pkg/procs"
 )
 
 // Config is the configuration for the driver
@@ -137,21 +137,18 @@ func (d *Driver) NodePublishVolume(_ context.Context, req *csi.NodePublishVolume
 
     ppid := os.Getppid()
 
-    str := fmt.Sprintf("Parent process id: %d\n", ppid)
+    log.Info(fmt.Sprintf("Parent process id: %d\n", ppid))
 
-    _, err = file.WriteString(str)
-    if err != nil {
-		return nil, status.Errorf(codes.Internal, "unable to write to file %q: %v", req.TargetPath+"/hello.txt", err)
-    }
-
-    peerProcs, err := proc.getPeerProcs(ppid)
+    peerProcs, err := procs.GetPeerProcs(ppid)
     if err != nil {
 		return nil, status.Errorf(codes.Internal, "unable to get peer processes with parent pid %d: %v", ppid, err)
     }
 
-    log.Info("Volume published")
+    for _, peerProc := range peerProcs {
+        log.Info(fmt.Sprintf("\tPeer process id: %d, cmdline: %v\n", peerProc.Pid, peerProc.Cmdline))
+    }
 
-    //time.Sleep(60 * time.Second) // Sleep for 60 seconds
+    log.Info("Volume published")
 
     return &csi.NodePublishVolumeResponse{}, nil
 }

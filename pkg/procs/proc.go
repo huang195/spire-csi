@@ -1,8 +1,10 @@
-package proc
+package procs
 
 import (
     "fmt"
-    "ioutil"
+    "strings"
+    "strconv"
+    "io/ioutil"
 )
 
 type Proc struct {
@@ -10,7 +12,7 @@ type Proc struct {
     Cmdline string
 }
 
-func GetPeerProcs(ppid int) (procs []Proc, err error) {
+func GetPeerProcs(ppid int) ([]Proc, error) {
 
     var procs []Proc
 
@@ -21,28 +23,27 @@ func GetPeerProcs(ppid int) (procs []Proc, err error) {
 
     for _, proc := range procFiles {
         if pidNum, err := strconv.Atoi(proc.Name()); err == nil {
-        }
 
-        statusFile := fmt.Sprintf("/proc/%d/status", pidNum)
-        statusContent, err := ioutil.ReadFile(statusFile)
-        if err != nil {
-            continue
-        }
+            statusFile := fmt.Sprintf("/proc/%d/status", pidNum)
+            statusContent, err := ioutil.ReadFile(statusFile)
+            if err != nil {
+                continue
+            }
 
-        for _, line := range strings.Split(string(statusContent), "\n") {
-            if strings.HasPrefix(line, "PPid:") {
-					fields := strings.Fields(line)
-					if len(fields) == 2 {
-						childPPID, err := strconv.Atoi(fields[1])
-						if err == nil && childPPID == ppid {
-							// If the PPID matches, this is a child process
-							cmdline, _ := ioutil.ReadFile(fmt.Sprintf("/proc/%d/cmdline", pidNum))
-                            p := Proc{Pid: pidNum, Cmdline: cmdline}
-                            procs.append(procs. p)
-						}
-					}
-				}
-			}
+            for _, line := range strings.Split(string(statusContent), "\n") {
+                if strings.HasPrefix(line, "PPid:") {
+                    fields := strings.Fields(line)
+                    if len(fields) == 2 {
+                        childPPID, err := strconv.Atoi(fields[1])
+                        if err == nil && childPPID == ppid {
+                            // If the PPID matches, this is a child process
+                            cmdline, _ := ioutil.ReadFile(fmt.Sprintf("/proc/%d/cmdline", pidNum))
+                            p := Proc{Pid: pidNum, Cmdline: string(cmdline)}
+                            procs = append(procs, p)
+                        }
+                    }
+                }
+            }
         }
     }
 
