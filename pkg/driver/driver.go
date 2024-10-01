@@ -15,6 +15,7 @@ import (
     "golang.org/x/sys/unix"
 
     "github.com/huang195/spire-csi/pkg/procs"
+    "github.com/huang195/spire-csi/pkg/cgroups"
 )
 
 // Config is the configuration for the driver
@@ -78,10 +79,20 @@ func (d *Driver) Probe(context.Context, *csi.ProbeRequest) (*csi.ProbeResponse, 
 func (d *Driver) NodePublishVolume(_ context.Context, req *csi.NodePublishVolumeRequest) (_ *csi.NodePublishVolumeResponse, err error) {
 	ephemeralMode := req.GetVolumeContext()["csi.storage.k8s.io/ephemeral"]
 
+   	podName := req.GetVolumeContext()["csi.storage.k8s.io/pod.name"]
+	podNamespace := req.GetVolumeContext()["csi.storage.k8s.io/pod.namespace"]
+	podUID := req.GetVolumeContext()["csi.storage.k8s.io/pod.uid"]
+	podServiceAccount := req.GetVolumeContext()["csi.storage.k8s.io/serviceAccount.name"]
+
     log := d.log.WithValues(
 		"volumeID", req.VolumeId,
 		"targetPath", req.TargetPath,
 	)
+
+    log.Info(fmt.Sprintf("podName: %s\n", podName))
+    log.Info(fmt.Sprintf("podNamespace: %s\n", podNamespace))
+    log.Info(fmt.Sprintf("podUID: %s\n", podUID))
+    log.Info(fmt.Sprintf("podServiceAccount: %s\n", podServiceAccount))
 
     if req.VolumeCapability != nil && req.VolumeCapability.AccessMode != nil {
 		log = log.WithValues("access_mode", req.VolumeCapability.AccessMode.Mode)
@@ -130,13 +141,18 @@ func (d *Driver) NodePublishVolume(_ context.Context, req *csi.NodePublishVolume
     }
     defer file.Close()
 
-    _, err = file.WriteString(req.TargetPath)
+    _, err = file.WriteString(req.TargetPath+"\n")
     if err != nil {
 		return nil, status.Errorf(codes.Internal, "unable to write to file %q: %v", req.TargetPath+"/hello.txt", err)
     }
 
-    ppid := os.Getppid()
+    pid := os.Getpid()
+    log.Info(fmt.Sprintf("My process id: %d\n", pid))
 
+    str, _ := cgroups.ReadCgroups(pid)
+    _, err = file.WriteString(str)
+
+    ppid := os.Getppid()
     log.Info(fmt.Sprintf("Parent process id: %d\n", ppid))
 
     peerProcs, err := procs.GetPeerProcs(ppid)
@@ -146,9 +162,14 @@ func (d *Driver) NodePublishVolume(_ context.Context, req *csi.NodePublishVolume
 
     for _, peerProc := range peerProcs {
         log.Info(fmt.Sprintf("\tPeer process id: %d, cmdline: %v\n", peerProc.Pid, peerProc.Cmdline))
+
+        str, _ := cgroups.ReadCgroups(peerProc.Pid)
+        _, err = file.WriteString(str)
     }
 
     log.Info("Volume published")
+
+    //time.Sleep(60*time.Second)
 
     return &csi.NodePublishVolumeResponse{}, nil
 }

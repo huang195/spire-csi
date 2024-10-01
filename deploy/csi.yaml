@@ -71,6 +71,8 @@ spec:
         - mountPath: /var/lib/kubelet/pods
           mountPropagation: Bidirectional
           name: mountpoint-dir
+        - mountPath: /var/run/containerd
+          name: containerd-socket-dir
       # This container runs the CSI Node Driver Registrar which takes care
       # of all the little details required to register a CSI driver with
       # the kubelet.
@@ -123,6 +125,11 @@ spec:
           path: /var/lib/kubelet/plugins_registry
           type: Directory
         name: kubelet-plugin-registration-dir
+      # This directory contains containerd udx socket
+      - hostPath:
+          path: /var/run/containerd
+          type: Directory
+        name: containerd-socket-dir
   updateStrategy:
     rollingUpdate:
       maxSurge: 0
