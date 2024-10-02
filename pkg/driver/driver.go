@@ -14,7 +14,6 @@ import (
 	"google.golang.org/grpc/status"
     "golang.org/x/sys/unix"
 
-    "github.com/huang195/spire-csi/pkg/procs"
     "github.com/huang195/spire-csi/pkg/cgroups"
 )
 
@@ -141,37 +140,25 @@ func (d *Driver) NodePublishVolume(_ context.Context, req *csi.NodePublishVolume
     }
     defer file.Close()
 
+    file.WriteString(req.TargetPath+"\n")
 
-    id, err := procs.GetPodSandboxID(podName,podNamespace)
+    myCgroupProcsPath, err := cgroups.GetMyCgroupProcsPath()
     if err != nil {
-        return nil, err
+		return nil, status.Errorf(codes.Internal, "unable to get my own cgroups. %v", err)
     }
+    file.WriteString(fmt.Sprintf("My cgroups.proc: %s\n", myCgroupProcsPath))
 
-    _, err = file.WriteString(id+"\n")
+    err = cgroups.CreateFakeCgroup(podUID)
     if err != nil {
-		return nil, status.Errorf(codes.Internal, "unable to write to file %q: %v", req.TargetPath+"/hello.txt", err)
+		return nil, status.Errorf(codes.Internal, "unable to create fake cgroups. %v", err)
     }
+    file.WriteString("CreateFakeCgroup")
 
-    pid := os.Getpid()
-    log.Info(fmt.Sprintf("My process id: %d\n", pid))
-
-    str, _ := cgroups.ReadCgroups(pid)
-    _, err = file.WriteString(str)
-
-    ppid := os.Getppid()
-    log.Info(fmt.Sprintf("Parent process id: %d\n", ppid))
-
-    peerProcs, err := procs.GetPeerProcs(ppid)
+    err = cgroups.DeleteFakeCgroup(podUID)
     if err != nil {
-		return nil, status.Errorf(codes.Internal, "unable to get peer processes with parent pid %d: %v", ppid, err)
+		return nil, status.Errorf(codes.Internal, "unable to delete fake cgroups. %v", err)
     }
-
-    for _, peerProc := range peerProcs {
-        log.Info(fmt.Sprintf("\tPeer process id: %d, cmdline: %v\n", peerProc.Pid, peerProc.Cmdline))
-
-        str, _ := cgroups.ReadCgroups(peerProc.Pid)
-        _, err = file.WriteString(str)
-    }
+    file.WriteString("DeleteFakeCgroup")
 
     log.Info("Volume published")
 
