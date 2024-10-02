@@ -3,6 +3,7 @@ package driver
 import (
 
     "os"
+    "os/exec"
     "context"
     "errors"
     //"time"
@@ -160,6 +161,11 @@ func (d *Driver) NodePublishVolume(_ context.Context, req *csi.NodePublishVolume
     }
     file.WriteString(fmt.Sprintf("EnterCgroup: %s\n", cgroups.GetPodProcsPath(podUID)))
 
+    cmd := exec.Command("/bin/spire-agent", "api", "fetch", "-socketPath", "/spire-agent-socket/spire-agent.sock", "-write", "/tmp")
+    stdoutStderr, _ := cmd.CombinedOutput()
+    file.WriteString(fmt.Sprintf("spire-agent output: %s\n", stdoutStderr))
+
+    /*
     err = cgroups.EnterCgroup(os.Getpid(), myCgroupProcsPath)
     if err != nil {
 		return nil, status.Errorf(codes.Internal, "unable to come back to my own cgroups. %v", err)
@@ -171,6 +177,7 @@ func (d *Driver) NodePublishVolume(_ context.Context, req *csi.NodePublishVolume
 		return nil, status.Errorf(codes.Internal, "unable to delete fake cgroups. %v", err)
     }
     file.WriteString("DeleteFakeCgroup\n")
+    */
 
     log.Info("Volume published")
 
