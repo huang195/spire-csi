@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: openssl-client
+spec:
+  restartPolicy: Never
+  containers:
+  - name: openssl-client
+    image: finalgene/openssh
+    #command: ["sh"]
+    #args: ["-c", "sleep infinity"]
+    command: ["sh"]
+    args: ["-c", "openssl s_client -connect openssl-svc:3000 -CAfile /csi-identity/bundle.0.pem -cert /csi-identity/svid.0.pem -key /csi-identity/svid.0.key -state"]
+    volumeMounts:
+    - name: csi-identity
+      mountPath: /csi-identity
+      readOnly: true
+  volumes:
+  - name: csi-identity
+    csi:
+      driver: "csi-identity.spiffe.io"
+      readOnly: true

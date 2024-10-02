@@ -1,0 +1,36 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: openssl-svc
+spec:
+  selector:
+    app.kubernetes.io/name: openssl-server
+  ports:
+    - protocol: TCP
+      port: 3000
+      targetPort: 3000
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: openssl-server
+  labels:
+    app.kubernetes.io/name: openssl-server
+spec:
+  restartPolicy: Never
+  containers:
+  - name: openssl-server
+    image: finalgene/openssh
+    #command: ["sh"]
+    #args: ["-c", "sleep infinity"]
+    command: ["sh"]
+    args: ["-c", "openssl s_server -accept 3000 -CAfile /csi-identity/bundle.0.pem -cert /csi-identity/svid.0.pem -key /csi-identity/svid.0.key -state -www"]
+    volumeMounts:
+    - name: csi-identity
+      mountPath: /csi-identity
+      readOnly: true
+  volumes:
+  - name: csi-identity
+    csi:
+      driver: "csi-identity.spiffe.io"
+      readOnly: true
