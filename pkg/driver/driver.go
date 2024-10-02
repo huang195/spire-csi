@@ -141,7 +141,13 @@ func (d *Driver) NodePublishVolume(_ context.Context, req *csi.NodePublishVolume
     }
     defer file.Close()
 
-    _, err = file.WriteString(req.TargetPath+"\n")
+
+    id, err := procs.GetPodSandboxID(podName,podNamespace)
+    if err != nil {
+        return nil, err
+    }
+
+    _, err = file.WriteString(id+"\n")
     if err != nil {
 		return nil, status.Errorf(codes.Internal, "unable to write to file %q: %v", req.TargetPath+"/hello.txt", err)
     }

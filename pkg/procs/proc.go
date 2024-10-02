@@ -1,10 +1,12 @@
 package procs
 
 import (
+    "os/exec"
     "fmt"
     "strings"
     "strconv"
     "io/ioutil"
+    "encoding/json"
 )
 
 type Proc struct {
@@ -49,3 +51,49 @@ func GetPeerProcs(ppid int) ([]Proc, error) {
 
     return procs, nil
 }
+
+func GetPodSandboxID(podName, podNamespace string) (string, error) {
+    cmd := exec.Command("crictl", "pods", "--name", podName, "--namespace", podNamespace, "-o", "json")
+    output, err := cmd.Output()
+    if err != nil {
+        return "", err
+    }
+
+    sandboxID, err := extractSandboxIDFromJSON(output)
+    return sandboxID, err
+}
+
+func extractSandboxIDFromJSON(input []byte) (string, error) {
+    var result map[string]interface{}
+
+    if err := json.Unmarshal(input, &result); err != nil {
+        return "", err
+    }
+
+    items, ok := result["items"].([]map[string]interface{})
+    if !ok {
+        return "", fmt.Errorf("Unexpected json result returned from crictl")
+    }
+
+    if len(items) != 1 {
+        return "", fmt.Errorf("Unexpected number of pods returned from crictl")
+    }
+
+    if id, ok := items[0]["id"].(string); ok {
+        return id, nil
+    }
+
+    return "", fmt.Errorf("Cannot find id field of the returned pod")
+}
+
+
+
+
+
+
+
+
+
+
+
+
