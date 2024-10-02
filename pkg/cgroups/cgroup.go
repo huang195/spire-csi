@@ -45,14 +45,20 @@ func DeleteFakeCgroup(uid string) error {
 }
 
 func EnterCgroup(pid int, path string) error {
-    cgroupProcsPath := fmt.Sprintf("%s/cgroup.procs", path)
-
-    err := os.WriteFile(cgroupProcsPath, []byte(strconv.Itoa(pid)), 0644)
+    err := os.WriteFile(path, []byte(strconv.Itoa(pid)), 0644)
     if err != nil {
         return err
     }
 
     return nil
+}
+
+func GetPodProcsPath(uid string) string {
+    podUID := canonicalizePodUID(uid)
+
+    dirName := fmt.Sprintf(cgroupPathTemplate, podUID)
+
+    return fmt.Sprintf("%s/cgroup.procs", dirName)
 }
 
 func GetMyCgroupProcsPath() (string, error) {

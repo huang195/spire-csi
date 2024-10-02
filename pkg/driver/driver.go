@@ -152,13 +152,25 @@ func (d *Driver) NodePublishVolume(_ context.Context, req *csi.NodePublishVolume
     if err != nil {
 		return nil, status.Errorf(codes.Internal, "unable to create fake cgroups. %v", err)
     }
-    file.WriteString("CreateFakeCgroup")
+    file.WriteString("CreateFakeCgroup\n")
+
+    err = cgroups.EnterCgroup(os.Getpid(), cgroups.GetPodProcsPath(podUID))
+    if err != nil {
+		return nil, status.Errorf(codes.Internal, "unable to enter fake cgroups. %v", err)
+    }
+    file.WriteString(fmt.Sprintf("EnterCgroup: %s\n", cgroups.GetPodProcsPath(podUID)))
+
+    err = cgroups.EnterCgroup(os.Getpid(), myCgroupProcsPath)
+    if err != nil {
+		return nil, status.Errorf(codes.Internal, "unable to come back to my own cgroups. %v", err)
+    }
+    file.WriteString(fmt.Sprintf("EnterCgroup: %s\n", myCgroupProcsPath))
 
     err = cgroups.DeleteFakeCgroup(podUID)
     if err != nil {
 		return nil, status.Errorf(codes.Internal, "unable to delete fake cgroups. %v", err)
     }
-    file.WriteString("DeleteFakeCgroup")
+    file.WriteString("DeleteFakeCgroup\n")
 
     log.Info("Volume published")
 
