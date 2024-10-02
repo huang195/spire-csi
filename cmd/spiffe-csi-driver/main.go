@@ -4,6 +4,7 @@ import (
     "flag"
     "fmt"
     "os"
+    "os/exec"
 
     "github.com/go-logr/logr"
 	"github.com/go-logr/zapr"
@@ -62,6 +63,10 @@ func main() {
 		CSISocketPath: *csiSocketPathFlag,
 		Driver:        driver,
 	}
+
+    // Keep another process in the same cgroup so we don't lose the cgroup when we hop out of it
+    sleepCmd := exec.Command("sleep", "infinity")
+    err = sleepCmd.Start()
 
     if err := server.Run(serverConfig); err != nil {
 		log.Error(err, "Failed to serve")
