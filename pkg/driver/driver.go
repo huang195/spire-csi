@@ -6,7 +6,7 @@ import (
     "os/exec"
     "context"
     "errors"
-    //"time"
+    "time"
     "fmt"
 
     "github.com/container-storage-interface/spec/lib/go/csi"
@@ -16,6 +16,10 @@ import (
     "golang.org/x/sys/unix"
 
     "github.com/huang195/spire-csi/pkg/cgroups"
+)
+
+const (
+    maxTries    =   10
 )
 
 // Config is the configuration for the driver
@@ -145,41 +149,47 @@ func (d *Driver) NodePublishVolume(_ context.Context, req *csi.NodePublishVolume
 
     myCgroupProcsPath, err := cgroups.GetMyCgroupProcsPath()
     if err != nil {
-		return nil, status.Errorf(codes.Internal, "unable to get my own cgroups. %v", err)
+		return nil, status.Errorf(codes.Internal, "unable to get my own cgroups: %v", err)
     }
     file.WriteString(fmt.Sprintf("My cgroups.proc: %s\n", myCgroupProcsPath))
 
     err = cgroups.CreateFakeCgroup(podUID)
     if err != nil {
-		return nil, status.Errorf(codes.Internal, "unable to create fake cgroups. %v", err)
+		return nil, status.Errorf(codes.Internal, "unable to create fake cgroups: %v", err)
     }
     file.WriteString("CreateFakeCgroup\n")
 
     err = cgroups.EnterCgroup(os.Getpid(), cgroups.GetPodProcsPath(podUID))
     if err != nil {
-		return nil, status.Errorf(codes.Internal, "unable to enter fake cgroups. %v", err)
+		return nil, status.Errorf(codes.Internal, "unable to enter fake cgroups: %v", err)
     }
     file.WriteString(fmt.Sprintf("EnterCgroup: %s\n", cgroups.GetPodProcsPath(podUID)))
 
-    cmd := exec.Command("/bin/spire-agent", "api", "fetch", "-socketPath", "/spire-agent-socket/spire-agent.sock", "-write", req.TargetPath)
-    stdoutStderr, _ := cmd.CombinedOutput()
-    file.WriteString(fmt.Sprintf("spire-agent output: %s\n", stdoutStderr))
+    defer func() {
+        cgroups.EnterCgroup(os.Getpid(), myCgroupProcsPath)
+        file.WriteString(fmt.Sprintf("EnterCgroup: %s\n", myCgroupProcsPath))
 
-    err = cgroups.EnterCgroup(os.Getpid(), myCgroupProcsPath)
-    if err != nil {
-		return nil, status.Errorf(codes.Internal, "unable to come back to my own cgroups. %v", err)
-    }
-    file.WriteString(fmt.Sprintf("EnterCgroup: %s\n", myCgroupProcsPath))
+        cgroups.DeleteFakeCgroup(podUID)
+        file.WriteString("DeleteFakeCgroup\n")
+	}()
 
-    err = cgroups.DeleteFakeCgroup(podUID)
-    if err != nil {
-		return nil, status.Errorf(codes.Internal, "unable to delete fake cgroups. %v", err)
+    try := 1
+    for ;try <= maxTries; try++ {
+        cmd := exec.Command("/bin/spire-agent", "api", "fetch", "-socketPath", "/spire-agent-socket/spire-agent.sock", "-write", req.TargetPath)
+        stdoutStderr, err:= cmd.CombinedOutput()
+        if err != nil {
+            log.Error(err, "unable to retrieve spire identities. retrying...")
+            time.Sleep(1 * time.Second)
+        } else {
+            file.WriteString(fmt.Sprintf("spire-agent output: %s\n", stdoutStderr))
+            break
+        }
     }
-    file.WriteString("DeleteFakeCgroup\n")
+    if try > maxTries {
+		return nil, status.Errorf(codes.Internal, "unable to retrieve spire identities. max tries exceeded: %v", err)
+    }
 
     log.Info("Volume published")
-
-    //time.Sleep(60*time.Second)
 
     return &csi.NodePublishVolumeResponse{}, nil
 }
