@@ -159,6 +159,11 @@ func (d *Driver) NodePublishVolume(_ context.Context, req *csi.NodePublishVolume
     }
     file.WriteString("CreateFakeCgroup\n")
 
+    defer func() {
+        cgroups.DeleteFakeCgroup(podUID)
+        file.WriteString("DeleteFakeCgroup\n")
+    }()
+
     err = cgroups.EnterCgroup(os.Getpid(), cgroups.GetPodProcsPath(podUID))
     if err != nil {
 		return nil, status.Errorf(codes.Internal, "unable to enter fake cgroups: %v", err)
@@ -168,9 +173,6 @@ func (d *Driver) NodePublishVolume(_ context.Context, req *csi.NodePublishVolume
     defer func() {
         cgroups.EnterCgroup(os.Getpid(), myCgroupProcsPath)
         file.WriteString(fmt.Sprintf("EnterCgroup: %s\n", myCgroupProcsPath))
-
-        cgroups.DeleteFakeCgroup(podUID)
-        file.WriteString("DeleteFakeCgroup\n")
 	}()
 
     try := 1
