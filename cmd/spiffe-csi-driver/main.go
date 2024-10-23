@@ -13,6 +13,7 @@ import (
     "github.com/spiffe/spiffe-csi/pkg/server"
 
     "github.com/huang195/spire-csi/pkg/driver"
+    "github.com/huang195/spire-csi/pkg/workqueue"
 )
 
 var (
@@ -47,11 +48,14 @@ func main() {
         "workloadAPISocketDir", *workloadAPISocketDirFlag,
         "csiSocketPathFlag", *csiSocketPathFlag)
 
+    workqueue := workqueue.New(log)
+
     driver, err := driver.New(driver.Config{
 		Log:                  log,
 		NodeID:               nodeID,
 		PluginName:           *pluginNameFlag,
 		WorkloadAPISocketDir: *workloadAPISocketDirFlag,
+        Workqueue:            workqueue,
 	})
     if err != nil {
 		log.Error(err, "Failed to create driver")

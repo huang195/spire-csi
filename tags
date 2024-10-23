@@ -1,0 +1,114 @@
+!_TAG_FILE_FORMAT	2
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted/
+!_TAG_PROGRAM_AUTHOR	Joel Stemmer	/stemmertech@gmail.com/
+!_TAG_PROGRAM_NAME	gotags
+!_TAG_PROGRAM_URL	https://github.com/jstemmer/gotags
+!_TAG_PROGRAM_VERSION	1.4.1	/go1.16.5/
+Add	pkg/workqueue/workqueue.go	40;"	m	access:public	ctype:Workqueue	line:40	signature:(volumeID string, dir string)	type:error
+Cmdline	pkg/procs/proc.go	14;"	w	access:public	ctype:Proc	line:14	type:string
+Config	pkg/driver/driver.go	27;"	t	access:public	line:27	type:struct
+CreateFakeCgroup	pkg/cgroups/cgroup.go	21;"	f	access:public	line:21	signature:(uid string)	type:error
+Delete	pkg/workqueue/workqueue.go	54;"	m	access:public	ctype:Workqueue	line:54	signature:(volumeID string)	type:error
+DeleteFakeCgroup	pkg/cgroups/cgroup.go	34;"	f	access:public	line:34	signature:(uid string)	type:error
+Driver	pkg/driver/driver.go	36;"	t	access:public	line:36	type:struct
+EnterCgroup	pkg/cgroups/cgroup.go	47;"	f	access:public	line:47	signature:(pid int, path string)	type:error
+GetMyCgroupProcsPath	pkg/cgroups/cgroup.go	64;"	f	access:public	line:64	signature:()	type:string, error
+GetPeerProcs	pkg/procs/proc.go	17;"	f	access:public	line:17	signature:(ppid int)	type:[]Proc, error
+GetPluginCapabilities	pkg/driver/driver.go	74;"	m	access:public	ctype:Driver	line:74	signature:(context.Context, *csi.GetPluginCapabilitiesRequest)	type:*csi.GetPluginCapabilitiesResponse, error
+GetPluginInfo	pkg/driver/driver.go	68;"	m	access:public	ctype:Driver	line:68	signature:(context.Context, *csi.GetPluginInfoRequest)	type:*csi.GetPluginInfoResponse, error
+GetPodProcsPath	pkg/cgroups/cgroup.go	56;"	f	access:public	line:56	signature:(uid string)	type:string
+GetPodSandboxID	pkg/procs/proc.go	55;"	f	access:public	line:55	signature:(podName, podNamespace string)	type:string, error
+Log	pkg/driver/driver.go	28;"	w	access:public	ctype:Config	line:28	type:logr.Logger
+New	pkg/driver/driver.go	48;"	f	access:public	ctype:Driver	line:48	signature:(config Config)	type:*Driver, error
+New	pkg/workqueue/workqueue.go	20;"	f	access:public	ctype:Workqueue	line:20	signature:(log logr.Logger)	type:*Workqueue
+NodeGetCapabilities	pkg/driver/driver.go	246;"	m	access:public	ctype:Driver	line:246	signature:(context.Context, *csi.NodeGetCapabilitiesRequest)	type:*csi.NodeGetCapabilitiesResponse, error
+NodeGetInfo	pkg/driver/driver.go	250;"	m	access:public	ctype:Driver	line:250	signature:(context.Context, *csi.NodeGetInfoRequest)	type:*csi.NodeGetInfoResponse, error
+NodeID	pkg/driver/driver.go	29;"	w	access:public	ctype:Config	line:29	type:string
+NodePublishVolume	pkg/driver/driver.go	87;"	m	access:public	ctype:Driver	line:87	signature:(_ context.Context, req *csi.NodePublishVolumeRequest)	type:*csi.NodePublishVolumeResponse, error
+NodeUnpublishVolume	pkg/driver/driver.go	208;"	m	access:public	ctype:Driver	line:208	signature:(_ context.Context, req *csi.NodeUnpublishVolumeRequest)	type:*csi.NodeUnpublishVolumeResponse, error
+Open	pkg/cgroups/cgroup.go	102;"	m	access:public	ctype:dirFS	line:102	signature:(p string)	type:io.ReadCloser, error
+ParseCertificate	pkg/cert/cert.go	9;"	f	access:public	line:9	signature:(certFile string)	type:time.Time, error
+Pid	pkg/procs/proc.go	13;"	w	access:public	ctype:Proc	line:13	type:int
+PluginName	pkg/driver/driver.go	30;"	w	access:public	ctype:Config	line:30	type:string
+Probe	pkg/driver/driver.go	79;"	m	access:public	ctype:Driver	line:79	signature:(context.Context, *csi.ProbeRequest)	type:*csi.ProbeResponse, error
+Proc	pkg/procs/proc.go	12;"	t	access:public	line:12	type:struct
+Work	pkg/workqueue/workqueue.go	10;"	t	access:public	line:10	type:struct
+WorkloadAPISocketDir	pkg/driver/driver.go	31;"	w	access:public	ctype:Config	line:31	type:string
+Workqueue	pkg/driver/driver.go	32;"	w	access:public	ctype:Config	line:32	type:*workqueue.Workqueue
+Workqueue	pkg/workqueue/workqueue.go	15;"	t	access:public	line:15	type:struct
+canonicalizePodUID	pkg/cgroups/cgroup.go	91;"	f	access:private	line:91	signature:(uid string)	type:types.UID
+cert	pkg/cert/cert.go	1;"	p	line:1
+cgroupPathTemplate	pkg/cgroups/cgroup.go	18;"	c	access:private	line:18
+cgroups	pkg/cgroups/cgroup.go	1;"	p	line:1
+context	pkg/driver/driver.go	7;"	i	line:7
+crypto/x509	pkg/cert/cert.go	4;"	i	line:4
+csi.UnimplementedIdentityServer	pkg/driver/driver.go	37;"	e	access:public	ctype:Driver	line:37	type:csi.UnimplementedIdentityServer
+csi.UnimplementedNodeServer	pkg/driver/driver.go	38;"	e	access:public	ctype:Driver	line:38	type:csi.UnimplementedNodeServer
+csiSocketPathFlag	cmd/spiffe-csi-driver/main.go	22;"	v	access:private	line:22
+dir	pkg/workqueue/workqueue.go	12;"	w	access:private	ctype:Work	line:12	type:string
+dirFS	pkg/cgroups/cgroup.go	100;"	t	access:private	line:100	type:string
+driver	pkg/driver/driver.go	1;"	p	line:1
+encoding/json	pkg/procs/proc.go	9;"	i	line:9
+encoding/pem	pkg/cert/cert.go	5;"	i	line:5
+errors	pkg/driver/driver.go	8;"	i	line:8
+extractSandboxIDFromJSON	pkg/procs/proc.go	66;"	f	access:private	line:66	signature:(input []byte)	type:string, error
+flag	cmd/spiffe-csi-driver/main.go	4;"	i	line:4
+fmt	cmd/spiffe-csi-driver/main.go	5;"	i	line:5
+fmt	pkg/cgroups/cgroup.go	8;"	i	line:8
+fmt	pkg/driver/driver.go	10;"	i	line:10
+fmt	pkg/procs/proc.go	5;"	i	line:5
+fmt	pkg/workqueue/workqueue.go	4;"	i	line:4
+getNodeIDFromFlags	cmd/spiffe-csi-driver/main.go	83;"	f	access:private	line:83	signature:()	type:string
+github.com/container-storage-interface/spec/lib/go/csi	pkg/driver/driver.go	12;"	i	line:12
+github.com/go-logr/logr	cmd/spiffe-csi-driver/main.go	9;"	i	line:9
+github.com/go-logr/logr	pkg/driver/driver.go	13;"	i	line:13
+github.com/go-logr/logr	pkg/workqueue/workqueue.go	7;"	i	line:7
+github.com/go-logr/zapr	cmd/spiffe-csi-driver/main.go	10;"	i	line:10
+github.com/huang195/spire-csi/pkg/cgroups	pkg/driver/driver.go	18;"	i	line:18
+github.com/huang195/spire-csi/pkg/driver	cmd/spiffe-csi-driver/main.go	15;"	i	line:15
+github.com/huang195/spire-csi/pkg/workqueue	cmd/spiffe-csi-driver/main.go	16;"	i	line:16
+github.com/huang195/spire-csi/pkg/workqueue	pkg/driver/driver.go	19;"	i	line:19
+github.com/spiffe/spiffe-csi/pkg/server	cmd/spiffe-csi-driver/main.go	13;"	i	line:13
+github.com/spiffe/spire/pkg/agent/common/cgroups	pkg/cgroups/cgroup.go	14;"	i	line:14
+go.uber.org/zap	cmd/spiffe-csi-driver/main.go	11;"	i	line:11
+golang.org/x/sys/unix	pkg/driver/driver.go	16;"	i	line:16
+google.golang.org/grpc/codes	pkg/driver/driver.go	14;"	i	line:14
+google.golang.org/grpc/status	pkg/driver/driver.go	15;"	i	line:15
+io	pkg/cgroups/cgroup.go	4;"	i	line:4
+io/ioutil	pkg/procs/proc.go	8;"	i	line:8
+isVolumeCapabilityAccessModeReadOnly	pkg/driver/driver.go	270;"	f	access:private	line:270	signature:(accessMode *csi.VolumeCapability_AccessMode)	type:bool
+isVolumeCapabilityPlainMount	pkg/driver/driver.go	257;"	f	access:private	line:257	signature:(volumeCapability *csi.VolumeCapability)	type:bool
+k8s.io/apimachinery/pkg/types	pkg/cgroups/cgroup.go	13;"	i	line:13
+log	pkg/driver/driver.go	40;"	w	access:private	ctype:Driver	line:40	type:logr.Logger
+log	pkg/workqueue/workqueue.go	17;"	w	access:private	ctype:Workqueue	line:17	type:logr.Logger
+main	cmd/spiffe-csi-driver/main.go	1;"	p	line:1
+main	cmd/spiffe-csi-driver/main.go	27;"	f	access:private	line:27	signature:()
+maxTries	pkg/driver/driver.go	23;"	c	access:private	line:23
+nodeID	pkg/driver/driver.go	41;"	w	access:private	ctype:Driver	line:41	type:string
+nodeIDEnvFlag	cmd/spiffe-csi-driver/main.go	21;"	v	access:private	line:21
+nodeIDFlag	cmd/spiffe-csi-driver/main.go	20;"	v	access:private	line:20
+os	cmd/spiffe-csi-driver/main.go	6;"	i	line:6
+os	pkg/cgroups/cgroup.go	5;"	i	line:5
+os	pkg/driver/driver.go	5;"	i	line:5
+os/exec	cmd/spiffe-csi-driver/main.go	7;"	i	line:7
+os/exec	pkg/driver/driver.go	6;"	i	line:6
+os/exec	pkg/procs/proc.go	4;"	i	line:4
+path/filepath	pkg/cgroups/cgroup.go	11;"	i	line:11
+pluginName	pkg/driver/driver.go	42;"	w	access:private	ctype:Driver	line:42	type:string
+pluginNameFlag	cmd/spiffe-csi-driver/main.go	23;"	v	access:private	line:23
+procs	pkg/procs/proc.go	1;"	p	line:1
+strconv	pkg/cgroups/cgroup.go	6;"	i	line:6
+strconv	pkg/procs/proc.go	7;"	i	line:7
+strings	pkg/cgroups/cgroup.go	7;"	i	line:7
+strings	pkg/procs/proc.go	6;"	i	line:6
+time	pkg/cert/cert.go	6;"	i	line:6
+time	pkg/driver/driver.go	9;"	i	line:9
+time	pkg/workqueue/workqueue.go	5;"	i	line:5
+unicode	pkg/cgroups/cgroup.go	10;"	i	line:10
+volumeID	pkg/workqueue/workqueue.go	11;"	w	access:private	ctype:Work	line:11	type:string
+worker	pkg/workqueue/workqueue.go	27;"	f	access:private	line:27	signature:(quit chan bool, work Work, log logr.Logger)
+workloadAPISocketDir	pkg/driver/driver.go	43;"	w	access:private	ctype:Driver	line:43	type:string
+workloadAPISocketDirFlag	cmd/spiffe-csi-driver/main.go	24;"	v	access:private	line:24
+workqueue	pkg/driver/driver.go	44;"	w	access:private	ctype:Driver	line:44	type:*workqueue.Workqueue
+workqueue	pkg/workqueue/workqueue.go	16;"	w	access:private	ctype:Workqueue	line:16	type:map[string]chan bool
+workqueue	pkg/workqueue/workqueue.go	1;"	p	line:1

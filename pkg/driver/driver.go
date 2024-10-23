@@ -16,6 +16,7 @@ import (
     "golang.org/x/sys/unix"
 
     "github.com/huang195/spire-csi/pkg/cgroups"
+    "github.com/huang195/spire-csi/pkg/workqueue"
 )
 
 const (
@@ -28,6 +29,7 @@ type Config struct {
     NodeID               string
 	PluginName           string
 	WorkloadAPISocketDir string
+    Workqueue            *workqueue.Workqueue
 }
 
 // Driver is the ephemeral-inline CSI driver implementation
@@ -39,6 +41,7 @@ type Driver struct {
     nodeID               string
 	pluginName           string
 	workloadAPISocketDir string
+    workqueue            *workqueue.Workqueue
 }
 
 // New creates a new driver with the given config
@@ -54,6 +57,7 @@ func New(config Config) (*Driver, error) {
         nodeID:               config.NodeID,
 		pluginName:           config.PluginName,
 		workloadAPISocketDir: config.WorkloadAPISocketDir,
+        workqueue:            config.Workqueue,
 	}, nil
 }
 
@@ -191,6 +195,11 @@ func (d *Driver) NodePublishVolume(_ context.Context, req *csi.NodePublishVolume
 		return nil, status.Errorf(codes.Internal, "unable to retrieve spire identities. max tries exceeded: %v", err)
     }
 
+    if err := d.workqueue.Add(req.VolumeId, req.TargetPath); err != nil {
+        log.Error(err, "unable to start goroutine for pod")
+        return nil, status.Errorf(codes.Internal, "unable to start goroutine for volume: %v", req.VolumeId)
+    }
+
     log.Info("Volume published")
 
     return &csi.NodePublishVolumeResponse{}, nil
@@ -215,6 +224,10 @@ func (d *Driver) NodeUnpublishVolume(_ context.Context, req *csi.NodeUnpublishVo
 	case req.TargetPath == "":
 		return nil, status.Error(codes.InvalidArgument, "request missing required target path")
 	}
+
+    if err := d.workqueue.Delete(req.VolumeId); err != nil {
+        return nil, status.Errorf(codes.Internal, "unable to stop goroutine for volume %v: %v", req.VolumeId, err)
+    }
 
     if err := unix.Unmount(req.TargetPath, 0); err != nil {
         return nil, status.Errorf(codes.Internal, "unable to unmount %q: %v", req.TargetPath, err)
