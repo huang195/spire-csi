@@ -3,8 +3,15 @@ package workqueue
 import(
     "fmt"
     "time"
+    "os/exec"
 
     "github.com/go-logr/logr"
+
+    "github.com/huang195/spire-csi/pkg/cert"
+)
+
+const (
+    maxTries    =   10
 )
 
 type Work struct {
@@ -32,7 +39,43 @@ func worker(quit chan bool, work Work, log logr.Logger) {
             log.Info(fmt.Sprintf("worker stopped for volumeID %v\n", work))
             return
         default:
-            time.Sleep(60 * time.Second)           
+            certFile := work.dir+"/svid.0.pem"
+            expirationTime, err := cert.GetCertificateExpirationTime(certFile)
+            if err != nil {
+                log.Error(err, fmt.Sprintf("cannot open certificate file: %s\n", certFile))
+                return
+            }
+
+            currentTime := time.Now()
+            durationUntilExpiration := expirationTime.Sub(currentTime)
+            halfwayDuration := durationUntilExpiration / 2
+
+            // try not to loop too frequently
+            if halfwayDuration < 30 * time.Second {
+                halfwayDuration = 30 * time.Second
+            }
+
+            timer := time.NewTimer(halfwayDuration)
+            log.Info(fmt.Sprintf("Timer set for halfway to expiration: %v\n", halfwayDuration))
+
+            <-timer.C
+            log.Info(fmt.Sprintf("Timer expired: halfway to certificate expiration reached"))
+
+            // Need to get new identities from spire agent
+            try := 1
+            for ;try <= maxTries; try++ {
+                cmd := exec.Command("/bin/spire-agent", "api", "fetch", "-socketPath", "/spire-agent-socket/spire-agent.sock", "-write", work.dir)
+                _, err:= cmd.CombinedOutput()
+                if err != nil {
+                    log.Error(err, "unable to retrieve spire identities. retrying...")
+                    time.Sleep(1 * time.Second)
+                } else {
+                    break
+                }
+            }
+            if try > maxTries {
+                log.Error(fmt.Errorf("unable to retrieve spire identities"), "max tries exceeded")
+            }
         }
     }
 }
