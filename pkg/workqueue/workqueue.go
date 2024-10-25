@@ -55,26 +55,30 @@ func worker(quit chan bool, work Work, log logr.Logger) {
                 halfwayDuration = 30 * time.Second
             }
 
-            timer := time.NewTimer(halfwayDuration)
             log.Info(fmt.Sprintf("Timer set for halfway to expiration: %v\n", halfwayDuration))
 
-            <-timer.C
-            log.Info(fmt.Sprintf("Timer expired: halfway to certificate expiration reached"))
+            select {
+            case <- quit:
+                log.Info(fmt.Sprintf("worker stopped for volumeID %v\n", work))
+                return
+            case <- time.After(halfwayDuration):
+                log.Info(fmt.Sprintf("Timer expired: halfway to certificate expiration reached"))
 
-            // Need to get new identities from spire agent
-            try := 1
-            for ;try <= maxTries; try++ {
-                cmd := exec.Command("/bin/spire-agent", "api", "fetch", "-socketPath", "/spire-agent-socket/spire-agent.sock", "-write", work.dir)
-                _, err:= cmd.CombinedOutput()
-                if err != nil {
-                    log.Error(err, "unable to retrieve spire identities. retrying...")
-                    time.Sleep(1 * time.Second)
-                } else {
-                    break
+                // Need to get new identities from spire agent
+                try := 1
+                for ;try <= maxTries; try++ {
+                    cmd := exec.Command("/bin/spire-agent", "api", "fetch", "-socketPath", "/spire-agent-socket/spire-agent.sock", "-write", work.dir)
+                    _, err:= cmd.CombinedOutput()
+                    if err != nil {
+                        log.Error(err, "unable to retrieve spire identities. retrying...")
+                        time.Sleep(1 * time.Second)
+                    } else {
+                        break
+                    }
                 }
-            }
-            if try > maxTries {
-                log.Error(fmt.Errorf("unable to retrieve spire identities"), "max tries exceeded")
+                if try > maxTries {
+                    log.Error(fmt.Errorf("unable to retrieve spire identities"), "max tries exceeded")
+                }
             }
         }
     }

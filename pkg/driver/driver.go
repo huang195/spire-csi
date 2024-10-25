@@ -225,10 +225,6 @@ func (d *Driver) NodeUnpublishVolume(_ context.Context, req *csi.NodeUnpublishVo
 		return nil, status.Error(codes.InvalidArgument, "request missing required target path")
 	}
 
-    if err := d.workqueue.Delete(req.VolumeId); err != nil {
-        return nil, status.Errorf(codes.Internal, "unable to stop goroutine for volume %v: %v", req.VolumeId, err)
-    }
-
     if err := unix.Unmount(req.TargetPath, 0); err != nil {
         return nil, status.Errorf(codes.Internal, "unable to unmount %q: %v", req.TargetPath, err)
     }
@@ -237,6 +233,10 @@ func (d *Driver) NodeUnpublishVolume(_ context.Context, req *csi.NodeUnpublishVo
 	if err := os.Remove(req.TargetPath); err != nil && !errors.Is(err, os.ErrNotExist) {
 		return nil, status.Errorf(codes.Internal, "unable to remove target path %q: %v", req.TargetPath, err)
 	}
+
+    if err := d.workqueue.Delete(req.VolumeId); err != nil {
+        return nil, status.Errorf(codes.Internal, "unable to stop goroutine for volume %v: %v", req.VolumeId, err)
+    }
 
 	log.Info("Volume unpublished")
 
