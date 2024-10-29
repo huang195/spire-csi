@@ -5,6 +5,7 @@ import(
     "time"
     "os"
     "os/exec"
+    "path/filepath"
 
     "github.com/go-logr/logr"
 
@@ -59,7 +60,7 @@ func worker(quit chan bool, work Work, log logr.Logger) {
             log.Info(fmt.Sprintf("worker stopped for volumeID %v\n", work))
             return
         default:
-            certFile := work.dir+"/svid.0.pem"
+            certFile := filepath.Join(work.dir, "svid.0.pem")
             expirationTime, err := cert.GetCertificateExpirationTime(certFile)
             if err != nil {
                 log.Error(err, fmt.Sprintf("cannot open certificate file: %s\n", certFile))
