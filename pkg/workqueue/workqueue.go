@@ -3,11 +3,13 @@ package workqueue
 import(
     "fmt"
     "time"
+    "os"
     "os/exec"
 
     "github.com/go-logr/logr"
 
     "github.com/huang195/spire-csi/pkg/cert"
+    "github.com/huang195/spire-csi/pkg/cgroups"
 )
 
 const (
@@ -15,6 +17,7 @@ const (
 )
 
 type Work struct {
+    podUID      string
     volumeID    string
     dir         string
 }
@@ -33,6 +36,23 @@ func New(log logr.Logger) (*Workqueue) {
 
 func worker(quit chan bool, work Work, log logr.Logger) {
     log.Info(fmt.Sprintf("worker started for volumeID %v\n", work))
+
+    //TODO: need synchronization
+    myCgroupProcsPath, err := cgroups.GetMyCgroupProcsPath()
+    if err != nil {
+        log.Error(err, "unable to get my own cgroup")
+        return
+    }
+
+    err = cgroups.CreateFakeCgroup1(work.podUID)
+    if err != nil {
+        log.Error(err, "unable to create fake cgroups")
+        return
+    }
+    defer func() {
+        cgroups.DeleteFakeCgroup1(work.podUID)
+    }()
+
     for {
         select {
         case <- quit:
@@ -64,7 +84,14 @@ func worker(quit chan bool, work Work, log logr.Logger) {
             case <- time.After(halfwayDuration):
                 log.Info(fmt.Sprintf("Timer expired: halfway to certificate expiration reached"))
 
-                // Need to get new identities from spire agent
+                //enter cgroup
+                err = cgroups.EnterCgroup(os.Getpid(), cgroups.GetPodProcsPath1(work.podUID))
+                if err != nil {
+                    log.Error(err, "cannot enter target cgroup")
+                    break
+                }
+
+                // Get new identities from spire agent
                 try := 1
                 for ;try <= maxTries; try++ {
                     cmd := exec.Command("/bin/spire-agent", "api", "fetch", "-socketPath", "/spire-agent-socket/spire-agent.sock", "-write", work.dir)
@@ -79,18 +106,21 @@ func worker(quit chan bool, work Work, log logr.Logger) {
                 if try > maxTries {
                     log.Error(fmt.Errorf("unable to retrieve spire identities"), "max tries exceeded")
                 }
+
+                cgroups.EnterCgroup(os.Getpid(), myCgroupProcsPath)
             }
         }
     }
 }
 
-func (w *Workqueue) Add(volumeID string, dir string) error {
+func (w *Workqueue) Add(podUID, volumeID, dir string) error {
     if _, exists := w.workqueue[volumeID]; !exists {
         quit := make(chan bool)
         w.workqueue[volumeID] = quit
         work := Work{
-            volumeID: volumeID,
-            dir: dir,
+            podUID:     podUID,
+            volumeID:   volumeID,
+            dir:        dir,
         }
         go worker(quit, work, w.log)
         return nil

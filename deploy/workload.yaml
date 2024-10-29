@@ -10,7 +10,7 @@ spec:
     args: ["-c", "sleep infinity"]
     volumeMounts:
     - name: csi-identity
-      mountPath: /csi-identity
+      mountPath: /var/run/secrets/spire
       readOnly: true
   volumes:
   - name: csi-identity

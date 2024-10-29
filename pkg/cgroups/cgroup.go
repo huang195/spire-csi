@@ -16,6 +16,7 @@ import(
 
 const (
     cgroupPathTemplate = "/sys/fs/cgroup/kubelet.slice/kubelet-kubepods.slice/kubelet-kubepods-besteffort.slice/kubelet-kubepods-besteffort-pod%s.slice/cri-containerd-0000000000000000000000000000000000000000000000000000000000000000.scope"
+    cgroupPathTemplate1 = "/sys/fs/cgroup/kubelet.slice/kubelet-kubepods.slice/kubelet-kubepods-besteffort.slice/kubelet-kubepods-besteffort-pod%s.slice/cri-containerd-0000000000000000000000000000000000000000000000000000000000000001.scope"
 )
 
 func CreateFakeCgroup(uid string) error {
@@ -44,8 +45,13 @@ func DeleteFakeCgroup(uid string) error {
     return nil
 }
 
-func EnterCgroup(pid int, path string) error {
-    err := os.WriteFile(path, []byte(strconv.Itoa(pid)), 0644)
+//TODO: temporary workaround for race condition
+func CreateFakeCgroup1(uid string) error {
+    podUID := canonicalizePodUID(uid)
+
+    dirName := fmt.Sprintf(cgroupPathTemplate1, podUID)
+
+    err := os.Mkdir(dirName, 0755)
     if err != nil {
         return err
     }
@@ -53,10 +59,39 @@ func EnterCgroup(pid int, path string) error {
     return nil
 }
 
+func DeleteFakeCgroup1(uid string) error {
+    podUID := canonicalizePodUID(uid)
+
+    dirName := fmt.Sprintf(cgroupPathTemplate1, podUID)
+
+    err := os.Remove(dirName)
+    if err != nil {
+        return err
+    }
+
+    return nil
+}
+
+func EnterCgroup(pid int, path string) error {
+    err := os.WriteFile(path, []byte(strconv.Itoa(pid)), 0644)
+    if err != nil {
+        return err
+    }
+    return nil
+}
+
 func GetPodProcsPath(uid string) string {
     podUID := canonicalizePodUID(uid)
 
     dirName := fmt.Sprintf(cgroupPathTemplate, podUID)
+
+    return fmt.Sprintf("%s/cgroup.procs", dirName)
+}
+
+func GetPodProcsPath1(uid string) string {
+    podUID := canonicalizePodUID(uid)
+
+    dirName := fmt.Sprintf(cgroupPathTemplate1, podUID)
 
     return fmt.Sprintf("%s/cgroup.procs", dirName)
 }
