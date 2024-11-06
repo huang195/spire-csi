@@ -7,6 +7,7 @@ import(
     "os/exec"
     "path/filepath"
     "regexp"
+    "sync"
 
     "github.com/go-logr/logr"
 
@@ -37,6 +38,9 @@ func New(log logr.Logger) (*Workqueue) {
 }
 
 func worker(quit chan bool, work Work, log logr.Logger) {
+
+    var mu sync.Mutex
+
     log.Info(fmt.Sprintf("worker started for volumeID %v\n", work))
 
     //TODO: need synchronization
@@ -86,10 +90,15 @@ func worker(quit chan bool, work Work, log logr.Logger) {
             case <- time.After(halfwayDuration):
                 log.Info(fmt.Sprintf("Timer expired: halfway to certificate expiration reached"))
 
-                //enter cgroup
+                // only 1 goroutine can mess with the cgroup at a time
+                mu.Lock()
+
+                // enter cgroup
                 err = cgroups.EnterCgroup(os.Getpid(), cgroups.GetPodProcsPath1(work.podUID))
                 if err != nil {
+                    mu.Unlock()
                     log.Error(err, "cannot enter target cgroup")
+                    time.Sleep(1 * time.Second)
                     break
                 }
 
@@ -109,7 +118,9 @@ func worker(quit chan bool, work Work, log logr.Logger) {
                     log.Error(fmt.Errorf("unable to retrieve spire identities"), "max tries exceeded")
                 }
 
+                // go back to our own cgroup
                 cgroups.EnterCgroup(os.Getpid(), myCgroupProcsPath)
+                mu.Unlock()
             }
         }
     }
