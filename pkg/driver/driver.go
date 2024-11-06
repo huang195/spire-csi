@@ -234,8 +234,8 @@ func (d *Driver) NodeUnpublishVolume(_ context.Context, req *csi.NodeUnpublishVo
 		return nil, status.Errorf(codes.Internal, "unable to remove target path %q: %v", req.TargetPath, err)
 	}
 
-    if err := d.workqueue.Delete(req.VolumeId); err != nil {
-        return nil, status.Errorf(codes.Internal, "unable to stop goroutine for volume %v: %v", req.VolumeId, err)
+    if err := d.workqueue.Delete(req.TargetPath); err != nil {
+        return nil, status.Errorf(codes.Internal, "unable to stop goroutine for volume %v, path: %v: %v", req.VolumeId, req.TargetPath, err)
     }
 
 	log.Info("Volume unpublished")

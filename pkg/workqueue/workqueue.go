@@ -6,6 +6,7 @@ import(
     "os"
     "os/exec"
     "path/filepath"
+    "regexp"
 
     "github.com/go-logr/logr"
 
@@ -57,7 +58,7 @@ func worker(quit chan bool, work Work, log logr.Logger) {
     for {
         select {
         case <- quit:
-            log.Info(fmt.Sprintf("worker stopped for volumeID %v\n", work))
+            log.Info(fmt.Sprintf("worker stopped for work item: %v\n", work))
             return
         default:
             certFile := filepath.Join(work.dir, "svid.0.pem")
@@ -115,9 +116,9 @@ func worker(quit chan bool, work Work, log logr.Logger) {
 }
 
 func (w *Workqueue) Add(podUID, volumeID, dir string) error {
-    if _, exists := w.workqueue[volumeID]; !exists {
+    if _, exists := w.workqueue[podUID]; !exists {
         quit := make(chan bool)
-        w.workqueue[volumeID] = quit
+        w.workqueue[podUID] = quit
         work := Work{
             podUID:     podUID,
             volumeID:   volumeID,
@@ -129,10 +130,27 @@ func (w *Workqueue) Add(podUID, volumeID, dir string) error {
     return fmt.Errorf(fmt.Sprintf("volumeID already exists: %s\n", volumeID))
 }
 
-func (w *Workqueue) Delete(volumeID string) error {
-    if c, exists := w.workqueue[volumeID]; exists {
+func (w *Workqueue) Delete(targetPath string) error {
+
+    // podUID can be extracted from targetPath. This would allow us to use podUID as the key to the workqueue
+    // instead of volumeID, as sometimes we don't have the volumeID, e.g., in the background thread
+    // e.g., /var/lib/kubelet/pods/fe35a4fa-0d82-41f2-818a-c021e3c10fce/volumes/kubernetes.io~csi/csi-identity/mount
+    podUID := ""
+
+    re := regexp.MustCompile(`/pods/([^/]+)/volumes/`)
+    match := re.FindStringSubmatch(targetPath)
+    if len(match) > 1 {
+        podUID = match[1]
+    } else {
+        return fmt.Errorf(fmt.Sprintf("Cannot parse podUID from targetPath: %v", targetPath))
+    }
+
+    if c, exists := w.workqueue[podUID]; exists {
         c <- true
         return nil
     }
-    return fmt.Errorf(fmt.Sprintf("volumeID does not exist: %s\n", volumeID))
+    return fmt.Errorf(fmt.Sprintf("cannot find podUID (%s) in the workqueue", podUID))
 }
+
+//TODO: Need a thread to re-initialize the workqueue when we are restarted and to
+// deal with cleaning up things
