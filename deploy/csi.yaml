@@ -7,20 +7,20 @@ metadata:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: deployment-viewer-role
+  name: pod-viewer-role
 rules:
-  - apiGroups: ["apps"]
-    resources: ["deployments"]
+  - apiGroups: [""]
+    resources: ["pods"]
     verbs: ["get", "list"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: deployment-viewer-binding
+  name: pod-viewer-binding
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: deployment-viewer-role
+  name: pod-viewer-role
 subjects:
   - kind: ServiceAccount
     name: csi-identity-driver

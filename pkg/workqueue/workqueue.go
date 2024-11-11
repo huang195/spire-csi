@@ -11,7 +11,7 @@ import(
     "context"
 
     "github.com/go-logr/logr"
-    appsv1 "k8s.io/api/apps/v1"
+    corev1 "k8s.io/api/core/v1"
     metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
     "k8s.io/client-go/rest"
     "k8s.io/client-go/kubernetes"
@@ -168,9 +168,8 @@ func (w *Workqueue) Delete(targetPath string) error {
     return fmt.Errorf(fmt.Sprintf("cannot find podUID (%s) in the workqueue", podUID))
 }
 
-// Function to check if a deployment uses the specified CSI driver
-func deploymentUsesCSIDriver(deployment *appsv1.Deployment, driverName string) bool {
-	for _, volume := range deployment.Spec.Template.Spec.Volumes {
+func podUsesCSIDriver(pod *corev1.Pod, driverName string) bool {
+	for _, volume := range pod.Spec.Volumes {
 		if volume.CSI != nil && volume.CSI.Driver == driverName {
 			return true
 		}
@@ -178,10 +177,8 @@ func deploymentUsesCSIDriver(deployment *appsv1.Deployment, driverName string) b
 	return false
 }
 
-// Function to check if a deployment is "running" (all replicas available)
-func deploymentIsRunning(deployment *appsv1.Deployment) bool {
-	return deployment.Status.ReadyReplicas == *deployment.Spec.Replicas &&
-		deployment.Status.AvailableReplicas == *deployment.Spec.Replicas
+func podIsRunning(pod *corev1.Pod) bool {
+    return pod.Status.Phase == corev1.PodRunning
 }
 
 //TODO: Need a thread to re-initialize the workqueue when we are restarted and to
@@ -204,17 +201,20 @@ func (w *Workqueue) Background() {
         os.Exit(1)
 	}
 
+    nodeName := os.Getenv("MY_NODE_NAME")
+
     for {
         log.Info("workqueue background thread waking up to look for unhandled deployments")
-        deployments, err := clientset.AppsV1().Deployments("").List(context.TODO(), metav1.ListOptions{})
+        pods, err := clientset.CoreV1().Pods("").List(context.TODO(), metav1.ListOptions{})
+
         if err != nil {
-            log.Error(err, "Failed to list deployments")
+            log.Error(err, "Failed to list pods")
             os.Exit(1)
         }
 
-        for _, deployment := range deployments.Items {
-            if deploymentUsesCSIDriver(&deployment, driverName) && deploymentIsRunning(&deployment) {
-                fmt.Printf(" - %s (Namespace: %s)\n", deployment.Name, deployment.Namespace)
+        for _, pod := range pods.Items {
+            if pod.Spec.NodeName == nodeName && podUsesCSIDriver(&pod, driverName) && podIsRunning(&pod) {
+                fmt.Printf(" - %s (Namespace: %s)\n", pod.Name, pod.Namespace)
             }
         }
 
