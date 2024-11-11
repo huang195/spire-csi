@@ -27,7 +27,6 @@ const (
 
 type Work struct {
     podUID      string
-    volumeID    string
     dir         string
 }
 
@@ -47,7 +46,7 @@ func worker(quit chan bool, work Work, log logr.Logger) {
 
     var mu sync.Mutex
 
-    log.Info(fmt.Sprintf("worker started for volumeID %v\n", work))
+    log.Info(fmt.Sprintf("worker started for %v\n", work))
 
     myCgroupProcsPath, err := cgroups.GetMyCgroupProcsPath()
     if err != nil {
@@ -58,7 +57,7 @@ func worker(quit chan bool, work Work, log logr.Logger) {
     err = cgroups.CreateFakeCgroup1(work.podUID)
     if err != nil {
         log.Error(err, "unable to create fake cgroups")
-        return
+        //return
     }
     defer func() {
         cgroups.DeleteFakeCgroup1(work.podUID)
@@ -90,7 +89,7 @@ func worker(quit chan bool, work Work, log logr.Logger) {
 
             select {
             case <- quit:
-                log.Info(fmt.Sprintf("worker stopped for volumeID %v\n", work))
+                log.Info(fmt.Sprintf("worker stopped for %v\n", work))
                 return
             case <- time.After(halfwayDuration):
                 log.Info(fmt.Sprintf("Timer expired: halfway to certificate expiration reached"))
@@ -131,19 +130,18 @@ func worker(quit chan bool, work Work, log logr.Logger) {
     }
 }
 
-func (w *Workqueue) Add(podUID, volumeID, dir string) error {
+func (w *Workqueue) Add(podUID, dir string) error {
     if _, exists := w.workqueue[podUID]; !exists {
         quit := make(chan bool)
         w.workqueue[podUID] = quit
         work := Work{
             podUID:     podUID,
-            volumeID:   volumeID,
             dir:        dir,
         }
         go worker(quit, work, w.log)
         return nil
     }
-    return fmt.Errorf(fmt.Sprintf("volumeID already exists: %s\n", volumeID))
+    return fmt.Errorf(fmt.Sprintf("podUID already exists: %s\n", podUID))
 }
 
 func (w *Workqueue) Delete(targetPath string) error {
@@ -168,17 +166,22 @@ func (w *Workqueue) Delete(targetPath string) error {
     return fmt.Errorf(fmt.Sprintf("cannot find podUID (%s) in the workqueue", podUID))
 }
 
-func podUsesCSIDriver(pod *corev1.Pod, driverName string) bool {
+func podUsesCSIDriver(pod *corev1.Pod, driverName string) (string, bool) {
 	for _, volume := range pod.Spec.Volumes {
 		if volume.CSI != nil && volume.CSI.Driver == driverName {
-			return true
+			return volume.Name, true
 		}
 	}
-	return false
+	return "", false
 }
 
 func podIsRunning(pod *corev1.Pod) bool {
     return pod.Status.Phase == corev1.PodRunning
+}
+
+// e.g., /var/lib/kubelet/pods/fe35a4fa-0d82-41f2-818a-c021e3c10fce/volumes/kubernetes.io~csi/csi-identity/mount
+func getPodTargetPath(podUID, volumeName string) string {
+    return fmt.Sprintf("/var/lib/kubelet/pods/%s/volumes/kubernetes.io~csi/%s/mount", podUID, volumeName)
 }
 
 //TODO: Need a thread to re-initialize the workqueue when we are restarted and to
@@ -204,7 +207,7 @@ func (w *Workqueue) Background() {
     nodeName := os.Getenv("MY_NODE_NAME")
 
     for {
-        log.Info("workqueue background thread waking up to look for unhandled deployments")
+        log.Info("workqueue background thread waking up to look for unhandled pods")
         pods, err := clientset.CoreV1().Pods("").List(context.TODO(), metav1.ListOptions{})
 
         if err != nil {
@@ -213,8 +216,22 @@ func (w *Workqueue) Background() {
         }
 
         for _, pod := range pods.Items {
-            if pod.Spec.NodeName == nodeName && podUsesCSIDriver(&pod, driverName) && podIsRunning(&pod) {
-                fmt.Printf(" - %s (Namespace: %s)\n", pod.Name, pod.Namespace)
+
+            // Get all running pods placed on the same node as us
+            if pod.Spec.NodeName == nodeName && podIsRunning(&pod) {
+
+                // Get only those pods that use SPIRE CSI volumes
+                if volumeName, exists := podUsesCSIDriver(&pod, driverName); exists {
+
+                    // Get only those pods that we are currently not tracking
+                    podUID := string(pod.GetUID())
+                    if _, exists := w.workqueue[podUID]; !exists {
+                        log.Info(fmt.Sprintf("Found orphant pod: %s (Namespace: %s), (UID: %s)", pod.Name, pod.Namespace, pod.GetUID()))
+                    }
+
+                    targetPath := getPodTargetPath(podUID, volumeName)
+                    w.Add(podUID, targetPath)
+                }
             }
         }
 

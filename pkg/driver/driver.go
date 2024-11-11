@@ -195,9 +195,9 @@ func (d *Driver) NodePublishVolume(_ context.Context, req *csi.NodePublishVolume
 		return nil, status.Errorf(codes.Internal, "unable to retrieve spire identities. max tries exceeded: %v", err)
     }
 
-    if err := d.workqueue.Add(podUID, req.VolumeId, req.TargetPath); err != nil {
+    if err := d.workqueue.Add(podUID, req.TargetPath); err != nil {
         log.Error(err, "unable to start goroutine for pod")
-        return nil, status.Errorf(codes.Internal, "unable to start goroutine for volume: %v", req.VolumeId)
+        return nil, status.Errorf(codes.Internal, "unable to start goroutine for pod: %v", podUID)
     }
 
     log.Info("Volume published")
