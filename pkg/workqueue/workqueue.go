@@ -8,8 +8,13 @@ import(
     "path/filepath"
     "regexp"
     "sync"
+    "context"
 
     "github.com/go-logr/logr"
+    appsv1 "k8s.io/api/apps/v1"
+    metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+    "k8s.io/client-go/rest"
+    "k8s.io/client-go/kubernetes"
 
     "github.com/huang195/spire-csi/pkg/cert"
     "github.com/huang195/spire-csi/pkg/cgroups"
@@ -17,6 +22,7 @@ import(
 
 const (
     maxTries    =   10
+    driverName  =   "csi-identity.spiffe.io"
 )
 
 type Work struct {
@@ -43,7 +49,6 @@ func worker(quit chan bool, work Work, log logr.Logger) {
 
     log.Info(fmt.Sprintf("worker started for volumeID %v\n", work))
 
-    //TODO: need synchronization
     myCgroupProcsPath, err := cgroups.GetMyCgroupProcsPath()
     if err != nil {
         log.Error(err, "unable to get my own cgroup")
@@ -163,5 +168,56 @@ func (w *Workqueue) Delete(targetPath string) error {
     return fmt.Errorf(fmt.Sprintf("cannot find podUID (%s) in the workqueue", podUID))
 }
 
+// Function to check if a deployment uses the specified CSI driver
+func deploymentUsesCSIDriver(deployment *appsv1.Deployment, driverName string) bool {
+	for _, volume := range deployment.Spec.Template.Spec.Volumes {
+		if volume.CSI != nil && volume.CSI.Driver == driverName {
+			return true
+		}
+	}
+	return false
+}
+
+// Function to check if a deployment is "running" (all replicas available)
+func deploymentIsRunning(deployment *appsv1.Deployment) bool {
+	return deployment.Status.ReadyReplicas == *deployment.Spec.Replicas &&
+		deployment.Status.AvailableReplicas == *deployment.Spec.Replicas
+}
+
 //TODO: Need a thread to re-initialize the workqueue when we are restarted and to
 // deal with cleaning up things
+func (w *Workqueue) Background() {
+    log := w.log
+
+    log.Info("workqueue background thread started...")
+
+    var config *rest.Config
+    config, err := rest.InClusterConfig()
+    if err != nil {
+		log.Error(err, "Failed to create in-cluster config")
+        os.Exit(1)
+	}
+
+    clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		log.Error(err, "Failed to create Kubernetes client")
+        os.Exit(1)
+	}
+
+    for {
+        log.Info("workqueue background thread waking up to look for unhandled deployments")
+        deployments, err := clientset.AppsV1().Deployments("").List(context.TODO(), metav1.ListOptions{})
+        if err != nil {
+            log.Error(err, "Failed to list deployments")
+            os.Exit(1)
+        }
+
+        for _, deployment := range deployments.Items {
+            if deploymentUsesCSIDriver(&deployment, driverName) && deploymentIsRunning(&deployment) {
+                fmt.Printf(" - %s (Namespace: %s)\n", deployment.Name, deployment.Namespace)
+            }
+        }
+
+        time.Sleep(30*time.Second)
+    }
+}

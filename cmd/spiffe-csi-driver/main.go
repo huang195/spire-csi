@@ -62,6 +62,8 @@ func main() {
 		os.Exit(1)
 	}
 
+    go workqueue.Background()
+
     serverConfig := server.Config{
 		Log:           log,
 		CSISocketPath: *csiSocketPathFlag,

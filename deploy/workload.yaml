@@ -1,19 +1,30 @@
-apiVersion: v1
-kind: Pod
+apiVersion: apps/v1
+kind: Deployment
 metadata:
   name: busybox
+  labels:
+    app: busybox
 spec:
-  containers:
-  - name: busybox
-    image: busybox
-    command: ["sh"]
-    args: ["-c", "sleep infinity"]
-    volumeMounts:
-    - name: csi-identity
-      mountPath: /var/run/secrets/spire
-      readOnly: true
-  volumes:
-  - name: csi-identity
-    csi:
-      driver: "csi-identity.spiffe.io"
-      readOnly: true
+  replicas: 1
+  selector:
+    matchLabels:
+      app: busybox
+  template:
+    metadata:
+      labels:
+        app: busybox
+    spec:
+      containers:
+      - name: busybox
+        image: busybox
+        command: ["sh"]
+        args: ["-c", "sleep infinity"]
+        volumeMounts:
+        - name: csi-identity
+          mountPath: /var/run/secrets/spire
+          readOnly: true
+      volumes:
+      - name: csi-identity
+        csi:
+          driver: "csi-identity.spiffe.io"
+          readOnly: true
